@@ -68,7 +68,8 @@ for (const lang of LANGS) {
     if (lang === "fr" && dex && !dexFr.has(dex)) dexFr.set(dex, (c.name || "").replace(/[- ](ex|EX|GX|V|VMAX|VSTAR|V-UNION|LV\.X|δ|☆|◇|BREAK|Prime)$/u, "").trim());
     // Alias français (recherche « dracaufeu » pour Charizard / リザードン)
     const alias = lang !== "fr" && dex ? dex : 0;
-    cards.push([pre(lang) + ref.id, pre(lang) + set, ref.localId, c?.name ?? ref.name, c?.rarity ?? "", vs || "n", img, t, c?.hp ?? 0, alias]);
+    // Marque de règlement (lettre D, E, F, G, H… imprimée en bas à gauche depuis Épée et Bouclier)
+    cards.push([pre(lang) + ref.id, pre(lang) + set, ref.localId, c?.name ?? ref.name, c?.rarity ?? "", vs || "n", img, t, c?.hp ?? 0, alias, c?.regulationMark ?? ""]);
     const cm = c?.pricing?.cardmarket;
     if (cm) {
       const p = [num(cm.trend), num(cm.low), num(cm.avg30), num(cm["trend-holo"]), num(cm["low-holo"]), num(cm["avg30-holo"])];

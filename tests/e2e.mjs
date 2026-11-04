@@ -33,6 +33,8 @@ await page.click(".nav .fab");
 let r = await search("MEW 025"); ok(r[0] === "sv03.5-025" && r.includes("en:sv03.5-025"), `« MEW 025 » → Pikachu 151 FR puis EN (${r})`);
 r = await search("MEW FR 025"); ok(r.length === 1 && r[0] === "sv03.5-025", "« MEW FR 025 » → uniquement FR");
 r = await search("MEW EN 025"); ok(r.length === 1 && r[0] === "en:sv03.5-025", "« MEW EN 025 » → carte anglaise");
+r = await search("F 051/196"); ok(r[0] === "swsh11-051", `« F 051/196 » (marque F + total) → Origine Perdue (${r[0]})`);
+r = await search("G 025/165"); ok(r[0] === "sv03.5-025", "« G 025/165 » → 151");
 r = await search("SV2a 25"); ok(r[0] === "ja:SV2a-025", `« SV2a 25 » → carte japonaise (${r[0]})`);
 r = await search("MEW FR"); ok((await page.$$("#results .set-row")).length === 1, "« MEW FR » → extension 151 FR proposée");
 r = await search("pikachu"); ok(r.some((x) => x.startsWith("ja:")) && r.some((x) => x.startsWith("en:")), "Nom français → cartes EN et JP aussi (alias)");

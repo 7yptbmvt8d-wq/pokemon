@@ -78,7 +78,7 @@ async function loadData() {
   const [c, p] = await Promise.all([fetch("data/cards.json").then((r) => r.json()), fetch("data/prices.json").then((r) => r.json())]);
   ASSET = c.assets || ASSET; prices = p; prices.fx ??= { EUR: 1 };
   c.sets.forEach((s, i) => { sets.set(s.id, s); setOrd.set(s.id, i); bySet.set(s.id, []); });
-  cards = c.cards.map(([id, s, l, name, r, v, im, t, hp, al]) => ({ id, s, l, name, r, v, img: im, t, hp, a: al || "", k: deacc(al ? `${name} ${al}` : name).toLowerCase() }));
+  cards = c.cards.map(([id, s, l, name, r, v, im, t, hp, al, g]) => ({ id, s, l, name, r, v, img: im, t, hp, a: al || "", g: /^[A-Z]$/i.test(g || "") ? g.toUpperCase() : "", k: deacc(al ? `${name} ${al}` : name).toLowerCase() }));
   for (const x of cards) { byId.set(x.id, x); bySet.get(x.s)?.push(x); }
   snapshot();
 }
@@ -448,19 +448,25 @@ function resolveSets(tok, loose = true) {
 }
 const recentFirst = (a, b) => LRANK[langOf(a)] - LRANK[langOf(b)] || setOrd.get(b.s) - setOrd.get(a.s) || cmpKey(numKey(a), numKey(b));
 function search(input) {
-  const sp = splitLang(input), raw = sp.rest; qLangs = sp.langs;
+  const sp = splitLang(input); let raw = sp.rest; qLangs = sp.langs;
+  // Marque de règlement en tête ("F 051/196", "G MEW 025") : lettre seule imprimée en bas à gauche
+  let qMark = ""; { const w = raw.trim().split(/\s+/); if (w.length > 1 && /^[A-J]$/i.test(w[0])) { qMark = w[0].toUpperCase(); raw = w.slice(1).join(" "); } }
   const q = deacc(raw).trim().toUpperCase().replace(/\s+/g, " ");
-  if (!q) return { list: [], sets: qLangs.length ? [] : [] };
+  if (!q) return { list: [], sets: [] };
   const okLang = (c) => !qLangs.length || qLangs.includes(langOf(c));
-  const inSets = (ss, num) => { const n = normNum(num), ids = new Set(ss.map((s) => s.id)); return cards.filter((c) => ids.has(c.s) && normNum(c.l) === n); };
+  const byMark = (list) => { if (!qMark) return list; const f = list.filter((c) => !c.g || c.g === qMark); return f.length ? f : list; };
+  const inSets = (ss, num) => { const n = normNum(num), ids = new Set(ss.map((s) => s.id)); return byMark(cards.filter((c) => ids.has(c.s) && normNum(c.l) === n)); };
   // 1) [CODE] [FR] NNN/TTT
   let m = q.match(/^(?:(.+?)\s+)?(?:FR\s+)?([A-Z]{0,4}\d{1,4}[A-Z]?)\s*\/\s*([A-Z]{0,4}\d{1,4})$/);
   if (m) {
     const [, code, num, tot] = m;
-    let ss = code ? resolveSets(code) : [...sets.values()].filter((s) => !qLangs.length || qLangs.includes(s.lang));
+    const allL = [...sets.values()].filter((s) => !qLangs.length || qLangs.includes(s.lang));
+    let ss = code ? resolveSets(code) : allL, unknown = false;
+    if (code && !ss.length) { ss = allL; unknown = true; } // code non reconnu : on se fie au total imprimé
     if (/^\d+$/.test(tot)) { const byTot = ss.filter((s) => s.official === +tot); if (byTot.length) ss = byTot; else if (!code) ss = ss.filter((s) => s.total === +tot); }
+    if (unknown) { const byTot = ss.filter((s) => s.official === +tot); ss = byTot.length ? byTot : ss.filter((s) => s.total === +tot); }
     const list = inSets(ss, num).sort(recentFirst);
-    return { list, msg: list.length ? "" : `Aucune carte ${num}/${tot}${code ? ` dans « ${code} »` : ""}.` };
+    return { list, msg: list.length ? "" : `Aucune carte ${num}/${tot}${code && !unknown ? ` dans « ${code} »` : ""}.`, hint: unknown && list.length ? `« ${code} » n'est pas un code d'extension : cartes n° ${num}/${tot} :` : "" };
   }
   // 2) EXTENSION NUMÉRO ("MEW 025", "151 25", "sv03.5 25")
   m = q.match(/^(.+?)\s+#?([A-Z]{0,4}\d{1,4}[A-Z]?)$/);
@@ -844,11 +850,11 @@ function candidates(text) {
   const t = text.toUpperCase().replace(/[\\|]/g, "/"), codes = CODES(), out = new Map();
   const add = (label, list) => { for (const c of list) if (!out.has(c.id)) out.set(c.id, { c, label }); };
   // "MEW FR 025/165", "025/165", "TG05/TG30"
-  for (const m of t.matchAll(/(?:([A-Z0-9]{2,4})\s+)?(?:(FR|EN|F|R)\s+)?([A-Z]{0,2}[0-9OQDILSBZG]{1,3})\s*\/\s*([A-Z]{0,2}[0-9OQDILSBZG]{2,3})/g)) {
+  for (const m of t.matchAll(/(?:\b([D-J])\s+)?(?:([A-Z0-9]{2,4})\s+)?(?:(FR|EN)\s+)?([A-Z]{0,2}[0-9OQDILSBZG]{1,3})\s*\/\s*([A-Z]{0,2}[0-9OQDILSBZG]{2,3})/g)) {
     const fix = (x) => { const p = x.match(/^([A-Z]{0,2}?)([0-9OQDILSBZG]+)$/); return p ? (p[1] && /^(TG|GG|SV|RC|H)$/.test(p[1]) ? p[1] : "") + DIG(p[2]) : DIG(x); };
-    const num = fix(m[3]), tot = fix(m[4]), code = m[1] ? LET(m[1]) : "", lg = m[2] === "EN" ? " EN" : m[2] === "FR" || m[2] === "F" ? " FR" : "";
-    if (code && codes.has(code)) { const r = search(`${code}${lg} ${num}/${tot}`); if (r.list.length) { add(`${code}${lg} ${num}/${tot}`, r.list); continue; } }
-    const r = search(`${num}/${tot}`); if (r.list.length) add(`${num}/${tot}`, r.list);
+    const num = fix(m[4]), tot = fix(m[5]), code = m[2] ? LET(m[2]) : "", lg = m[3] ? ` ${m[3]}` : "", mk = m[1] ? `${m[1]} ` : "";
+    if (code && codes.has(code)) { const r = search(`${mk}${code}${lg} ${num}/${tot}`); if (r.list.length) { add(`${mk}${code}${lg} ${num}/${tot}`, r.list); continue; } }
+    const r = search(`${mk}${lg} ${num}/${tot}`.trim()); if (r.list.length) add(`${mk}${num}/${tot}`, r.list);
   }
   // Promos et cartes sans total : "SVP FR 045", "MEW 025"
   if (!out.size) for (const m of t.matchAll(/\b([A-Z0-9]{2,4})\s+(?:FR\s+)?([0-9OQDILSBZG]{2,3})\b/g)) {
@@ -983,7 +989,7 @@ $("#reset").onclick = () => { if (confirm("Effacer toute la collection de cet ap
 })();
 let swReg = null;
 // Mises à jour : vérification à chaque retour dans l'app, rechargement automatique quand une nouvelle version est prête
-const APP_VERSION = "4 (04/11/2026)";
+const APP_VERSION = "5 (04/11/2026)";
 $("#app-version").textContent = `Version de l'app : ${APP_VERSION}`;
 // Stockage persistant : évite que le navigateur vide la collection et le cache hors ligne
 navigator.storage?.persist?.().catch(() => {});
