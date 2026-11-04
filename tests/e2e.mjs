@@ -150,12 +150,13 @@ ok(+(await page.textContent("#q-out")) >= 2, "Stepper + : quantité enregistrée
 await page.click("#sheet [data-close]");
 await page.click(".nav .fab"); await search("MEW 150"); await page.click("#results .result"); await page.waitForSelector("#sheet[open] #wish-btn");
 await page.click("#wish-btn"); await page.click('#prio [data-p="1"]'); await page.click("#sheet [data-close]");
-await page.click(".nav [data-goto=wish]");
+await page.click(".nav [data-goto=home]"); await page.click("#b-wish");
 ok((await page.$$("#wish-list .w-row")).length === 1, "Recherchées : 1 carte, priorité haute");
 await shot("10-recherchees");
-await page.click(".nav [data-goto=sets]");
+await page.click("#view-wish [data-goto=home]"); await page.click("#completion [data-goto=sets]");
 await page.waitForTimeout(200);
 await shot("11-sets");
+ok((await page.$$(".nav button")).length === 3, "Barre : Collection / + / Réglages");
 await page.click(".nav [data-goto=profile]");
 await shot("12-profil");
 ok((await page.textContent("#app-version")).includes("Version"), "Numéro de version dans Profil");

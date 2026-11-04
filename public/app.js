@@ -904,7 +904,8 @@ function go(v) {
   if (!VIEWS.includes(v)) return;
   current = v;
   $$(".view").forEach((s) => s.classList.toggle("active", s.id === "view-" + v));
-  $$(".nav button").forEach((b) => { const on = b.dataset.goto === v; b.classList.toggle("on", on); if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
+  const tab = v === "sets" || v === "wish" ? "home" : v; // Sets et Recherchées : depuis l'onglet Collection
+  $$(".nav button").forEach((b) => { const on = b.dataset.goto === tab; b.classList.toggle("on", on); if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
   refreshViews();
   window.scrollTo(0, 0);
   if (v === "scan") setTimeout(() => $("#q").focus({ preventScroll: true }), 60);
@@ -957,7 +958,7 @@ $("#reset").onclick = () => { if (confirm("Effacer toute la collection de cet ap
 })();
 let swReg = null;
 // Mises à jour : vérification à chaque retour dans l'app, rechargement automatique quand une nouvelle version est prête
-const APP_VERSION = "2 (04/11/2026)";
+const APP_VERSION = "3 (04/11/2026)";
 $("#app-version").textContent = `Version de l'app : ${APP_VERSION}`;
 if ("serviceWorker" in navigator) {
   const hadController = !!navigator.serviceWorker.controller;

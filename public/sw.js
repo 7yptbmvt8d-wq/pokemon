@@ -1,7 +1,7 @@
 // Service worker : app utilisable hors connexion (collection + dernières données téléchargées).
-const V = "pkcol-v2";
+const V = "pkcol-v3";
 const IMG = "pkcol-img", LIB = "pkcol-lib";
-const SHELL = ["./", "index.html", "style.css?v=2", "app.js?v=2", "manifest.webmanifest", "icons/icon.svg", "icons/icon-180.png", "icons/icon-192.png"];
+const SHELL = ["./", "index.html", "style.css?v=3", "app.js?v=3", "manifest.webmanifest", "icons/icon.svg", "icons/icon-180.png", "icons/icon-192.png"];
 
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: "reload" }))))); self.skipWaiting(); });
 self.addEventListener("activate", (e) => {
