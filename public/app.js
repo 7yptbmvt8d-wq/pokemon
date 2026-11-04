@@ -505,10 +505,10 @@ function renderResults(res) {
 
 // ---------- Modales plein écran (page verrouillée derrière) ----------
 let lockY = 0, sheetBack = null;
-function openModal() {
+function openModal(y = 0) {
   const d = $("#sheet");
   if (!d.open) { lockY = scrollY; document.body.style.top = `-${lockY}px`; document.documentElement.classList.add("modal-open"); d.showModal(); }
-  d.scrollTop = 0;
+  d.scrollTop = y; // y : position conservée (changement de page du classeur, retour depuis une carte)
 }
 function onModalClose() {
   sheetBack = null; delete charts.card;
@@ -545,7 +545,7 @@ function binderPos(c, v) {
   if (i < 0) { rows = setRows(c.s, "master"); i = rows.findIndex((r) => r.card.id === c.id && (v === "r") === (r.v === "r")); pre = "Master set · "; }
   return i < 0 ? "" : `${pre}Page ${Math.floor(i / 9) + 1} · emplacement ${(i % 9) + 1}`;
 }
-function openSet(sid, show = "all", mode = "base", page = 0) {
+function openSet(sid, show = "all", mode = "base", page = 0, y = 0) {
   const inf = setInfo(sid), s = inf.s; if (!s) return;
   const rows = setRows(sid, mode);
   const missing = rows.filter((r) => !r.have), have = rows.length - missing.length;
@@ -589,8 +589,8 @@ function openSet(sid, show = "all", mode = "base", page = 0) {
         ? `Une pochette par numéro officiel (1 à ${inf.total}). ◆ = variantes possédées / disponibles. Coût : prix tendance le plus bas parmi les variantes de chaque numéro manquant.`
         : `Master set : toutes les cartes, secrètes comprises (${inf.cs.length}), et chaque reverse.`} Promos, cartes tamponnées et avant-premières non comptées. Balaye pour changer de page, touche une pochette vide pour ajouter la carte.</p>
     </div>`;
-  openModal();
-  const go_ = (sh = show, mo = mode, pg = 0) => openSet(sid, sh, mo, pg);
+  openModal(y);
+  const go_ = (sh = show, mo = mode, pg = 0) => openSet(sid, sh, mo, pg, $("#sheet").scrollTop);
   $$("#set-chips .pill").forEach((b) => b.onclick = () => go_(b.dataset.show, mode));
   $$("#set-mode .pill").forEach((b) => b.onclick = () => go_(show, b.dataset.mode));
   $("#mode-btn").onclick = () => go_(show, mode === "master" ? "base" : "master");
@@ -603,7 +603,7 @@ function openSet(sid, show = "all", mode = "base", page = 0) {
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) { const np = page + (dx < 0 ? 1 : -1); if (np >= 0 && np < pages) { bd.dataset.swiped = "1"; go_(show, mode, np); } }
   });
   $$(".slot").forEach((t) => t.onclick = () => {
-    sheetBack = () => openSet(sid, show, mode, page);
+    const yb = $("#sheet").scrollTop; sheetBack = () => openSet(sid, show, mode, page, yb);
     const id = t.dataset.id, v = t.dataset.v;
     const it = t.dataset.own && (store.items.find((i) => i.id === id && i.v === v) ?? store.items.find((i) => i.id === id && (mode === "base" || (i.v === "r") === (v === "r"))));
     openSheet(it ? { uid: it.uid } : { id, v });
@@ -989,7 +989,7 @@ $("#reset").onclick = () => { if (confirm("Effacer toute la collection de cet ap
 })();
 let swReg = null;
 // Mises à jour : vérification à chaque retour dans l'app, rechargement automatique quand une nouvelle version est prête
-const APP_VERSION = "5 (04/11/2026)";
+const APP_VERSION = "6 (04/11/2026)";
 $("#app-version").textContent = `Version de l'app : ${APP_VERSION}`;
 // Stockage persistant : évite que le navigateur vide la collection et le cache hors ligne
 navigator.storage?.persist?.().catch(() => {});

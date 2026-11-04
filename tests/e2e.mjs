@@ -132,6 +132,10 @@ await page.evaluate(({ x, y }) => {
 }, { x: box.x + box.width / 2, y: box.y + 100 });
 await page.waitForTimeout(200);
 ok((await page.textContent("#dots .pg")).includes("Page 2"), "Balayage → page 2");
+await page.evaluate(() => { document.querySelector("#sheet").scrollTop = 400; });
+const y0 = await page.$eval("#sheet", (d) => d.scrollTop);
+await page.click('#dots [data-page="0"]');
+ok(Math.abs((await page.$eval("#sheet", (d) => d.scrollTop)) - y0) < 2 && (await page.textContent("#dots .pg")).includes("Page 1"), `Changement de page : position conservée (${y0} px)`);
 await page.click('#set-mode [data-mode="master"]');
 head = await page.textContent("#sheet .prog b");
 ok(/^5\/\d{3}$/.test(head.trim()), `Master set : ${head.trim()} (secrètes + reverses)`);
