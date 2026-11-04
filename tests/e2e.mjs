@@ -9,9 +9,10 @@ await mkdir(OUT, { recursive: true });
 
 let fails = 0;
 const ok = (cond, msg) => { console.log(`${cond ? "✓" : "✗"} ${msg}`); if (!cond) fails++; };
-const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 440, height: 956 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: "fr-FR", acceptDownloads: true });
-const page = await ctx.newPage();
+// Profil sur disque (comme un vrai téléphone) : en navigation privée, Chromium limite le quota et vide le cache
+const { mkdtemp } = await import("node:fs/promises"), { tmpdir } = await import("node:os");
+const ctx = await chromium.launchPersistentContext(await mkdtemp(`${tmpdir()}/pkcol-`), { viewport: { width: 440, height: 956 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: "fr-FR", acceptDownloads: true });
+const page = ctx.pages()[0] ?? await ctx.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 page.on("dialog", (d) => d.accept());
@@ -29,7 +30,12 @@ ok(noHScroll, "Pas de défilement horizontal à 440 px");
 
 // ---- Recherche souple ----
 await page.click(".nav .fab");
-let r = await search("MEW 025"); ok(r.length === 1 && r[0] === "sv03.5-025", `« MEW 025 » → Pikachu 151 (${r})`);
+let r = await search("MEW 025"); ok(r[0] === "sv03.5-025" && r.includes("en:sv03.5-025"), `« MEW 025 » → Pikachu 151 FR puis EN (${r})`);
+r = await search("MEW FR 025"); ok(r.length === 1 && r[0] === "sv03.5-025", "« MEW FR 025 » → uniquement FR");
+r = await search("MEW EN 025"); ok(r.length === 1 && r[0] === "en:sv03.5-025", "« MEW EN 025 » → carte anglaise");
+r = await search("SV2a 25"); ok(r[0] === "ja:SV2a-025", `« SV2a 25 » → carte japonaise (${r[0]})`);
+r = await search("MEW FR"); ok((await page.$$("#results .set-row")).length === 1, "« MEW FR » → extension 151 FR proposée");
+r = await search("pikachu"); ok(r.some((x) => x.startsWith("ja:")) && r.some((x) => x.startsWith("en:")), "Nom français → cartes EN et JP aussi (alias)");
 r = await search("025/165"); ok(r.includes("sv03.5-025"), `« 025/165 » → déduit par le total imprimé (${r.length} résultat(s))`);
 r = await search("151 25"); ok(r[0] === "sv03.5-025", "« 151 25 » → nom d'extension + numéro");
 r = await search("svi 1"); ok(r[0] === "sv01-001", `« svi 1 » → code SVI (${r[0]})`);
@@ -181,17 +187,17 @@ if (r.length) { await page.click(`#results .result[data-id="sv03.5-025"]`); awai
 // ---- Hors ligne ----
 await page.goto(URL_); await page.waitForSelector("html[data-ready='1']");
 await page.evaluate(() => navigator.serviceWorker.ready);
-await page.reload(); await page.waitForSelector("html[data-ready='1']"); await page.waitForTimeout(800);
+await page.reload(); await page.waitForSelector("html[data-ready='1']"); await page.waitForTimeout(3000);
 await ctx.setOffline(true);
 await page.reload(); await page.waitForSelector("html[data-ready='1']", { timeout: 20000 });
 await page.waitForTimeout(500);
 ok((await page.$$("#grid .tile")).length >= 6, "Hors ligne : app et collection affichées");
 await page.click(".nav .fab"); r = await search("MEW 025");
-ok(r[0] === "sv03.5-025", "Hors ligne : recherche disponible (données en cache)");
+ok(r[0] === "sv03.5-025", `Hors ligne : recherche disponible (données en cache) ${r.slice(0, 2)} ${await page.textContent("#data-info")}`);
 await shot("14-hors-ligne");
 await ctx.setOffline(false);
 
 ok(!errors.length, `Aucune erreur JS ${errors.length ? errors.join(" | ") : ""}`);
-await browser.close();
+await ctx.close();
 console.log(fails ? `\n${fails} échec(s)` : "\nTous les tests passent");
 process.exit(fails ? 1 : 0);

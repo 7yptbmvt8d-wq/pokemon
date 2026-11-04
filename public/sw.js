@@ -1,7 +1,7 @@
 // Service worker : app utilisable hors connexion (collection + dernières données téléchargées).
-const V = "pkcol-v3";
+const V = "pkcol-v4";
 const IMG = "pkcol-img", LIB = "pkcol-lib";
-const SHELL = ["./", "index.html", "style.css?v=3", "app.js?v=3", "manifest.webmanifest", "icons/icon.svg", "icons/icon-180.png", "icons/icon-192.png"];
+const SHELL = ["./", "index.html", "style.css?v=4", "app.js?v=4", "manifest.webmanifest", "icons/icon.svg", "icons/icon-180.png", "icons/icon-192.png"];
 
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: "reload" }))))); self.skipWaiting(); });
 self.addEventListener("activate", (e) => {
@@ -10,10 +10,19 @@ self.addEventListener("activate", (e) => {
 });
 
 // Interface et données : réseau d'abord, en forçant la revalidation (GitHub Pages met en cache 10 min)
-const networkFirst = async (req) => {
+const networkFirst = async (req, e) => {
   const c = await caches.open(V);
-  try { const r = await fetch(req.url, { cache: "no-cache", credentials: "same-origin" }); if (r.ok) c.put(req, r.clone()); return r; }
-  catch { return (await c.match(req)) || (await c.match(req, { ignoreSearch: true })) || (req.mode === "navigate" ? await c.match("./") : null) || Response.error(); }
+  try {
+    const r = await fetch(req.url, { cache: "no-cache", credentials: "same-origin" });
+    if (r.ok) {
+      // Fichier inchangé (même ETag / Last-Modified) : pas de réécriture du cache (données de plusieurs Mo)
+      const old = await c.match(req), tag = (x) => x && (x.headers.get("etag") || x.headers.get("last-modified"));
+      if (!old || !tag(r) || tag(old) !== tag(r)) e.waitUntil(c.put(req, r.clone()));
+    }
+    return r;
+  } catch {
+    return (await c.match(req)) || (await c.match(req, { ignoreSearch: true })) || (req.mode === "navigate" ? await c.match("./") : null) || Response.error();
+  }
 };
 // Images, polices, OCR : cache d'abord
 const cacheFirst = async (req, cache) => {
@@ -30,5 +39,5 @@ self.addEventListener("fetch", (e) => {
   if (u.hostname === "cdn.jsdelivr.net" || u.hostname === "tessdata.projectnaptha.com") return e.respondWith(cacheFirst(e.request, LIB));
   if (u.origin !== location.origin) return;
   if (u.pathname.includes("/data/history/") && !u.pathname.endsWith("index.json")) return e.respondWith(cacheFirst(e.request, V));
-  return e.respondWith(networkFirst(e.request));
+  return e.respondWith(networkFirst(e.request, e));
 });

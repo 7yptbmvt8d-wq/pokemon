@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@500;700;800&display=swap">
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
   <!-- MON CLASSEUR -->
@@ -84,8 +84,9 @@
       <div class="sub" id="sets-sub"></div></div></header>
     <div class="wrap">
       <div class="field-wrap"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input id="set-filter" type="search" placeholder="Nom ou code (MEW, 151…)" autocomplete="off" aria-label="Filtrer les extensions"></div>
+        <input id="set-filter" type="search" placeholder="Nom ou code (MEW, 151, MEW EN…)" autocomplete="off" aria-label="Filtrer les extensions"></div>
       <div class="pills" id="sets-chips"><button class="pill sm on" data-s="mine">Mes sets</button><button class="pill sm" data-s="all">Toutes les extensions</button></div>
+      <div class="pills" id="sets-langs" role="group" aria-label="Langue" style="margin-top:0"><button class="pill sm on" data-l="">Toutes langues</button><button class="pill sm" data-l="fr">FR</button><button class="pill sm" data-l="en">EN</button><button class="pill sm" data-l="ja">JP</button></div>
       <div id="sets-list"></div>
     </div>
   </section>
@@ -98,7 +99,7 @@
       <form id="search-form" class="search">
         <div class="field-wrap">
           <svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <input id="q" type="search" autocapitalize="off" autocomplete="off" enterkeyhint="search" placeholder="MEW 025, 025/165, 151 25 ou nom" aria-label="Code d'extension et numéro, ou nom">
+          <input id="q" type="search" autocapitalize="off" autocomplete="off" enterkeyhint="search" placeholder="MEW 025, MEW EN 025, 025/165 ou nom" aria-label="Code d'extension et numéro, ou nom">
         </div>
         <button class="btn red" type="submit">Chercher</button>
       </form>
@@ -144,7 +145,7 @@
       <div class="stk">
         <p class="muted small" id="data-info" style="margin:0"></p>
         <p class="muted small" id="app-version"></p>
-        <p class="muted small">Cartes, illustrations et prix : API TCGdex (cartes françaises), prix Cardmarket « tendance » en €, mis à jour chaque jour. Reverse : prix Cardmarket reverse. Un prix manuel saisi sur la fiche est prioritaire.</p>
+        <p class="muted small">Cartes, illustrations et prix : API TCGdex (cartes françaises, anglaises et japonaises), prix Cardmarket « tendance » en €, mis à jour chaque jour. Reverse : prix Cardmarket reverse. Un prix manuel saisi sur la fiche est prioritaire.</p>
         <button class="btn danger" id="reset">Effacer la collection</button>
       </div>
     </div>
@@ -160,6 +161,6 @@
   <div id="ptr" class="ptr" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></div>
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script type="module" src="app.js?v=3"></script>
+  <script type="module" src="app.js?v=4"></script>
 </body>
 </html>

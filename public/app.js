@@ -60,19 +60,25 @@ function cmpKey(a, b) {
 }
 function img(c, big) {
   if (!c || !c.img) return null;
-  const s = sets.get(c.s), path = c.img === 1 ? `fr/${s.serieId}/${s.id}/${c.l}` : c.img;
+  const s = sets.get(c.s), path = c.img === 1 ? `${s.lang || "fr"}/${s.serieId}/${s.raw ?? s.id}/${c.l}` : c.img;
   return `${ASSET}${path}/${big ? "high" : "low"}.webp`;
 }
 const logoUrl = (s) => (s?.logo ? `${ASSET}${s.logo}.webp` : null);
 const numLabel = (c) => { const s = sets.get(c?.s); return c ? (/^\d+$/.test(c.l) && s?.official ? `${c.l}/${String(s.official).padStart(String(c.l).length, "0")}` : c.l) : ""; };
-const setLabel = (s) => (s ? (s.code ? `${s.code} · ${s.name}` : s.name) : "");
+// Langues des cartes : FR (sans préfixe), EN ("en:"), JP ("ja:")
+const LANG_LABEL = { fr: "FR", en: "EN", ja: "JP" }, LRANK = { fr: 0, en: 1, ja: 2 };
+const langOf = (c) => sets.get(c?.s)?.lang ?? "fr";
+const lgTag = (lang) => (lang && lang !== "fr" ? `<span class="lg">${LANG_LABEL[lang]}</span>` : "");
+// Nom affiché : carte japonaise suivie de son nom français
+const nm = (c) => (c ? (langOf(c) === "ja" && c.a ? `${c.name} (${c.a})` : c.name) : "");
+const setLabel = (s) => (s ? `${s.code && s.code !== s.name ? `${s.code} · ` : ""}${s.name}${s.lang && s.lang !== "fr" ? ` · ${LANG_LABEL[s.lang]}` : ""}` : "");
 const defVariant = (c) => (c?.v.includes("n") ? "n" : c?.v.includes("h") ? "h" : c?.v[0] ?? "n");
 
 async function loadData() {
   const [c, p] = await Promise.all([fetch("data/cards.json").then((r) => r.json()), fetch("data/prices.json").then((r) => r.json())]);
   ASSET = c.assets || ASSET; prices = p; prices.fx ??= { EUR: 1 };
   c.sets.forEach((s, i) => { sets.set(s.id, s); setOrd.set(s.id, i); bySet.set(s.id, []); });
-  cards = c.cards.map(([id, s, l, name, r, v, im, t, hp]) => ({ id, s, l, name, r, v, img: im, t, hp, k: deacc(name).toLowerCase() }));
+  cards = c.cards.map(([id, s, l, name, r, v, im, t, hp, al]) => ({ id, s, l, name, r, v, img: im, t, hp, a: al || "", k: deacc(al ? `${name} ${al}` : name).toLowerCase() }));
   for (const x of cards) { byId.set(x.id, x); bySet.get(x.s)?.push(x); }
   snapshot();
 }
@@ -167,7 +173,9 @@ function rsym(c) { const { code, tier } = rarity(c?.r); return RSYM[code] ?? (ti
 // Rareté : code court + palier (C commune, R rare, UR ultra/ex/V, SCR illustration/hyper/secrète)
 function rarity(r = "") {
   const x = deacc(r).toLowerCase();
-  const map = [["sans rarete", "—", "C"], ["peu commune", "PC", "C"], ["commune", "C", "C"], ["promo", "PR", "R"], ["illustration speciale", "SIR", "SCR"], ["illustration", "IR", "SCR"],
+  const map = [["sans rarete", "—", "C"], ["none", "—", "C"], ["peu commune", "PC", "C"], ["uncommon", "PC", "C"], ["commune", "C", "C"], ["common", "C", "C"], ["promo", "PR", "R"],
+    ["illustration speciale", "SIR", "SCR"], ["special illustration", "SIR", "SCR"], ["illustration", "IR", "SCR"], ["secret", "SCR", "SCR"], ["character super", "CSR", "SCR"], ["character", "CHR", "SCR"],
+    ["amazing", "AR", "UR"], ["triple", "RRR", "UR"], ["radiant", "RAD", "UR"], ["legend", "LEG", "UR"], ["black white", "BWR", "SCR"],
     ["mega hyper", "MHR", "SCR"], ["hyper", "HR", "SCR"], ["magnifique", "MR", "SCR"], ["chromatique", "CUR", "SCR"], ["shiny", "SR", "SCR"], ["noir blanc", "BWR", "SCR"],
     ["high-tech", "ACE", "UR"], ["ultra", "UR", "UR"], ["double", "RR", "UR"], ["vmax", "VMAX", "UR"], ["vstar", "VSTAR", "UR"], ["holo rare v", "V", "UR"], ["lv.x", "LV.X", "UR"],
     ["prime", "PRIME", "UR"], ["legende", "LEG", "UR"], ["radieux", "RAD", "UR"], ["full art", "FA", "UR"], ["rare holo", "RH", "R"], ["holo rare", "RH", "R"], ["rare", "R", "R"]];
@@ -195,7 +203,7 @@ function setRow(x, { lite = false } = {}) {
   const s = x.s, full = x.have === x.total && x.total > 0;
   return `<button class="set-row ${setCls(s.id)}${full ? " full" : ""}${lite ? " lite" : ""}" data-set="${esc(s.id)}" aria-label="${esc(s.name)} : ${x.have} sur ${x.total}">
     ${x.best ? `<img class="bg" alt="" loading="lazy" src="${img(x.best)}">` : ""}
-    <span class="code">${esc(s.code || s.id.toUpperCase().slice(0, 5))}</span>
+    <span class="code">${esc(s.code || s.raw?.toUpperCase().slice(0, 5) || "")}${s.lang && s.lang !== "fr" ? `<small>${LANG_LABEL[s.lang]}</small>` : ""}</span>
     <span class="mid"><span class="top"><span class="nm">${esc(s.name)}</span>${lite ? `<span class="ct">${x.have} / ${x.total}</span>` : ""}</span>
       ${lite ? `<span class="ms">${esc(s.serie)}${s.date ? ` · ${s.date.slice(0, 4)}` : ""}</span>` : `<span class="ms">Master set : ${x.mHave} / ${x.mTotal}</span>`}</span>
     ${lite ? "" : `<span class="foot"><span class="pct">${pctInt(x.rate)}</span><span class="ct"><b>${x.have}</b> / ${x.total}</span></span>`}
@@ -249,7 +257,7 @@ async function renderHome() {
   const ch = items.map((it) => [it, change(it)]).filter(([it, c]) => c && (unitEUR(it) || 0) >= 0.5 && Math.abs(c.rel) >= 0.0005);
   const up = ch.filter(([, c]) => c.rel > 0).sort((a, b) => b[1].rel - a[1].rel).slice(0, 3);
   const dn = ch.filter(([, c]) => c.rel < 0).sort((a, b) => a[1].rel - b[1].rel).slice(0, 3);
-  const mv = (arr) => arr.map(([it, c]) => { const cd = byId.get(it.id); return `<div class="mover" data-uid="${it.uid}">${cardFrame(cd, { width: 34 })}<div class="grow"><div class="nm">${esc(cd?.name ?? it.id)}</div>${trend(c.rel)}</div></div>`; }).join("") || `<div class="muted small">—</div>`;
+  const mv = (arr) => arr.map(([it, c]) => { const cd = byId.get(it.id); return `<div class="mover" data-uid="${it.uid}">${cardFrame(cd, { width: 34 })}<div class="grow"><div class="nm">${esc(nm(cd) || it.id)}</div>${trend(c.rel)}</div></div>`; }).join("") || `<div class="muted small">—</div>`;
   $("#movers").innerHTML = ch.length ? `<div class="stk"><h3>Hausses</h3>${mv(up)}</div><div class="stk"><h3>Baisses</h3>${mv(dn)}</div>` : "";
 
   // Par type
@@ -292,26 +300,29 @@ function renderGrid() {
     const s = sets.get(c?.s);
     return head + `<div class="tile" data-uid="${it.uid}" role="button" tabindex="0" aria-label="${esc(c?.name ?? "")} ${esc(numLabel(c))}">
       ${cardFrame(c, { qty: it.qty, holo: isHolo(it.v) })}
-      <div class="t-name">${esc(c?.name ?? "Carte inconnue")}</div>
-      <div class="t-meta">${esc(s?.code || s?.name || "")} ${esc(numLabel(c))} ${esc(rsym(c))}${it.v !== "n" ? ` · <span class="vtag">${esc(VARS[it.v])}</span>` : ""}</div>
+      <div class="t-name">${esc(nm(c) || "Carte inconnue")}</div>
+      <div class="t-meta">${lgTag(s?.lang)}${esc(s?.code || s?.name || "")} ${esc(numLabel(c))} ${esc(rsym(c))}${it.v !== "n" ? ` · <span class="vtag">${esc(VARS[it.v])}</span>` : ""}</div>
       <div class="t-price"><b>${money(v)}</b>${trend(change(it)?.rel)}</div>
     </div>`; }).join("") || (store.items.length ? `<p class="muted small grid-head">Aucune carte pour ce filtre.</p>` : "");
   for (const it of list.filter((x) => x.it.photo)) photoUrl(it.it.uid).then((u) => { const im = u && $(`#grid .tile[data-uid="${it.it.uid}"] img`); if (im) im.src = u; });
 }
 
 // ---------- Vue Sets ----------
-let setsMode = "mine";
+let setsMode = "mine", setsLang = "";
 function renderSets() {
-  const q = NORM($("#set-filter").value), comp = new Map(completion().map((x) => [x.key, x]));
+  const { rest, langs } = splitLang($("#set-filter").value), q = NORM(rest), comp = new Map(completion().map((x) => [x.key, x]));
   $$("#sets-chips .pill").forEach((b) => b.classList.toggle("on", b.dataset.s === setsMode));
+  $$("#sets-langs .pill").forEach((b) => b.classList.toggle("on", b.dataset.l === setsLang));
   let list = [...sets.values()].filter((s) => s.kind === "main");
+  const wanted = langs.length ? langs : setsLang ? [setsLang] : null;
+  if (wanted) list = list.filter((s) => wanted.includes(s.lang));
   if (setsMode === "mine" && !q) list = list.filter((s) => comp.has(s.id));
-  if (q) list = list.filter((s) => NORM(`${s.code}${s.name}`).includes(q) || NORM(s.name).includes(q) || NORM(s.code) === q);
+  if (q) list = list.filter((s) => NORM(`${s.code}${s.name}`).includes(q) || NORM(s.name).includes(q) || NORM(s.code) === q || NORM(s.raw) === q);
   list.sort((a, b) => setOrd.get(b.id) - setOrd.get(a.id));
   $("#sets-sub").textContent = `${comp.size} extension${comp.size > 1 ? "s" : ""} entamée${comp.size > 1 ? "s" : ""} sur ${[...sets.values()].filter((s) => s.kind === "main").length}`;
   let serie = null;
   $("#sets-list").innerHTML = list.map((s) => {
-    const h = s.serie !== serie ? `<div class="serie">${esc(s.serie)}</div>` : ""; serie = s.serie;
+    const sk = s.serie + s.lang, h = sk !== serie ? `<div class="serie">${esc(s.serie)}${s.lang !== "fr" ? ` · ${LANG_LABEL[s.lang]}` : ""}</div>` : ""; serie = sk;
     return h + `<div style="margin-bottom:14px">${setRow(comp.get(s.id) ?? setStat(s.id), { lite: !comp.has(s.id) })}</div>`;
   }).join("") || `<div class="empty"><p>${setsMode === "mine" && !q ? "Aucune extension entamée. Ajoute une carte ou parcours « Toutes les extensions »." : "Aucune extension trouvée."}</p></div>`;
 }
@@ -325,7 +336,7 @@ function renderWish() {
   $("#wish-sub").textContent = list.length ? `${list.length} carte${list.length > 1 ? "s" : ""} · ≈ ${money(cost, 0)}` : "Touche l'étoile sur une fiche carte pour l'ajouter";
   $("#wish-list").innerHTML = list.map(({ c, p }) => { const s = sets.get(c.s); return `<div class="stk w-row" data-id="${esc(c.id)}" role="button" tabindex="0">
       ${cardFrame(c, { width: 56 })}
-      <div class="grow"><div class="name">${esc(c.name)}</div><div class="sub">${esc(s?.code || s?.name)} ${esc(numLabel(c))} ${esc(rsym(c))}</div>
+      <div class="grow"><div class="name">${esc(nm(c))}</div><div class="sub">${lgTag(s?.lang)} ${esc(s?.code || s?.name)} ${esc(numLabel(c))} ${esc(rsym(c))}</div>
         <span class="prio p${p}">Priorité ${PRIO[p].toLowerCase()}</span></div>
       <div class="price">${money(marketEUR(c.id, defVariant(c)))}</div></div>`; }).join("")
     || `<div class="empty"><div class="ic">${svg(ICONS.star)}</div><p>Aucune carte recherchée.</p></div>`;
@@ -421,23 +432,32 @@ function purchaseStats(p) {
 // ---------- Recherche / ajout ----------
 // Saisie souple : "025/165", "MEW 025", "151 25", "sv03.5 25", "TG05/TG30" ou nom de carte.
 const NORM = (s) => deacc(s).toUpperCase().replace(/[^A-Z0-9]/g, "");
-function resolveSets(tok) {
+// Mots de langue dans la saisie : "MEW FR 025", "151 anglais", "SV2a JP 25"
+const LWORDS = { FR: "fr", FRANCAIS: "fr", FRANCAISE: "fr", EN: "en", ENG: "en", ANG: "en", ANGLAIS: "en", ANGLAISE: "en", JP: "ja", JA: "ja", JAP: "ja", JAPONAIS: "ja", JAPONAISE: "ja" };
+function splitLang(raw) {
+  const langs = []; const rest = deacc(raw).trim().split(/\s+/).filter((w) => { const l = LWORDS[w.toUpperCase()]; if (l) { langs.push(l); return false; } return true; }).join(" ");
+  return { rest, langs };
+}
+let qLangs = [];
+function resolveSets(tok, loose = true) {
   const T = NORM(tok); if (!T) return [];
-  const all = [...sets.values()];
-  const exact = all.filter((s) => NORM(s.code) === T || NORM(s.id) === T || NORM(s.name) === T);
-  if (exact.length) return exact;
+  const all = [...sets.values()].filter((s) => !qLangs.length || qLangs.includes(s.lang));
+  const exact = all.filter((s) => NORM(s.code) === T || NORM(s.raw ?? s.id) === T || NORM(s.name) === T);
+  if (exact.length || !loose) return exact;
   return T.length >= 3 ? all.filter((s) => NORM(s.name).startsWith(T)) : [];
 }
-const recentFirst = (a, b) => setOrd.get(b.s) - setOrd.get(a.s) || cmpKey(numKey(a), numKey(b));
-function search(raw) {
+const recentFirst = (a, b) => LRANK[langOf(a)] - LRANK[langOf(b)] || setOrd.get(b.s) - setOrd.get(a.s) || cmpKey(numKey(a), numKey(b));
+function search(input) {
+  const sp = splitLang(input), raw = sp.rest; qLangs = sp.langs;
   const q = deacc(raw).trim().toUpperCase().replace(/\s+/g, " ");
-  if (!q) return { list: [] };
+  if (!q) return { list: [], sets: qLangs.length ? [] : [] };
+  const okLang = (c) => !qLangs.length || qLangs.includes(langOf(c));
   const inSets = (ss, num) => { const n = normNum(num), ids = new Set(ss.map((s) => s.id)); return cards.filter((c) => ids.has(c.s) && normNum(c.l) === n); };
   // 1) [CODE] [FR] NNN/TTT
   let m = q.match(/^(?:(.+?)\s+)?(?:FR\s+)?([A-Z]{0,4}\d{1,4}[A-Z]?)\s*\/\s*([A-Z]{0,4}\d{1,4})$/);
   if (m) {
     const [, code, num, tot] = m;
-    let ss = code ? resolveSets(code) : [...sets.values()];
+    let ss = code ? resolveSets(code) : [...sets.values()].filter((s) => !qLangs.length || qLangs.includes(s.lang));
     if (/^\d+$/.test(tot)) { const byTot = ss.filter((s) => s.official === +tot); if (byTot.length) ss = byTot; else if (!code) ss = ss.filter((s) => s.total === +tot); }
     const list = inSets(ss, num).sort(recentFirst);
     return { list, msg: list.length ? "" : `Aucune carte ${num}/${tot}${code ? ` dans « ${code} »` : ""}.` };
@@ -450,26 +470,29 @@ function search(raw) {
   if (m) { const ss = resolveSets(m[1]); if (ss.length) { const list = inSets(ss, m[2]); if (list.length) return { list }; } }
   // 4) Numéro seul : insuffisant, on liste les correspondances
   if (/^\d{1,3}$/.test(q)) {
-    const n = normNum(q), list = cards.filter((c) => c.l && normNum(c.l) === n && sets.get(c.s).kind === "main").sort(recentFirst).slice(0, 60);
+    const n = normNum(q), list = cards.filter((c) => c.l && normNum(c.l) === n && sets.get(c.s).kind === "main" && okLang(c)).sort(recentFirst).slice(0, 60);
     return { list, msg: "", hint: "Numéro seul : ajoute le code d'extension (MEW 025) ou le total imprimé (025/165). Correspondances :" };
   }
-  // 5) Nom de carte
-  const k = deacc(raw).trim().toLowerCase(); if (k.length < 2) return { list: [] };
-  const list = cards.filter((c) => c.k.includes(k)).sort((a, b) => (b.k.startsWith(k) - a.k.startsWith(k)) || recentFirst(a, b)).slice(0, 80);
-  return { list };
+  // 5) Extension seule ("MEW", "151", "Évolutions Prismatiques") puis nom de carte
+  const ss = resolveSets(q).filter((s) => s.kind !== "x").sort((x, y) => LRANK[x.lang] - LRANK[y.lang] || setOrd.get(y.id) - setOrd.get(x.id)).slice(0, 8);
+  const k = deacc(raw).trim().toLowerCase(); if (k.length < 2) return { list: [], sets: ss };
+  const all = cards.filter((c) => c.k.includes(k) && okLang(c)).sort((a, b) => (b.k.startsWith(k) - a.k.startsWith(k)) || recentFirst(a, b));
+  const cap = { fr: 0, en: 0, ja: 0 }, list = all.filter((c) => cap[langOf(c)]++ < 40); // 40 max par langue
+  return { list, sets: ss, hint: ss.length && list.length ? `Cartes dont le nom contient « ${raw} » :` : "" };
 }
 function renderResults(res) {
-  const { list, msg, hint } = res;
-  if (!list.length) { $("#results").innerHTML = `<p class="hint">${esc(msg || "Aucune carte trouvée. Exemples : MEW 025, 025/165, 151 25 ou Pikachu.")}</p>`; return; }
+  const { list, msg, hint, sets: ss = [] } = res;
+  const setsHtml = ss.length ? `<p class="hint">Extension${ss.length > 1 ? "s" : ""} — touche pour ouvrir le classeur :</p>` + ss.map((s) => setRow(setStat(s.id), { lite: true })).join("") : "";
+  if (!list.length) { $("#results").innerHTML = setsHtml || `<p class="hint">${esc(msg || "Aucune carte trouvée. Exemples : MEW 025, 025/165, 151 25, MEW EN 025 ou Pikachu.")}</p>`; return; }
   const q = qtyById();
-  $("#results").innerHTML = (hint ? `<p class="hint">${esc(hint)}</p>` : list.length > 1 ? `<p class="hint">${list.length} résultats — choisis la bonne carte :</p>` : "") +
+  $("#results").innerHTML = setsHtml + (hint ? `<p class="hint">${esc(hint)}</p>` : list.length > 1 ? `<p class="hint">${list.length} résultats — choisis la bonne carte :</p>` : "") +
     list.map((c) => {
       const s = sets.get(c.s), owned = q.get(c.id) || 0;
       return `<div class="stk result" data-id="${esc(c.id)}" role="button" tabindex="0">
         ${cardFrame(c, { width: 60 })}
-        <div class="grow"><div class="name">${esc(c.name)}</div>
+        <div class="grow"><div class="name">${esc(nm(c))}</div>
           <div class="sub">${esc(numLabel(c))} ${esc(rsym(c))}${c.r ? ` · ${esc(c.r)}` : ""}</div>
-          <div class="sub">${esc(setLabel(s))}${owned ? ` · <b class="gain">${owned} possédée${owned > 1 ? "s" : ""}</b>` : ""}</div></div>
+          <div class="sub">${lgTag(s?.lang)} ${esc(setLabel(s))}${owned ? ` · <b class="gain">${owned} possédée${owned > 1 ? "s" : ""}</b>` : ""}</div></div>
         <div class="price">${money(marketEUR(c.id, defVariant(c)))}</div></div>`;
     }).join("");
 }
@@ -525,19 +548,19 @@ function openSet(sid, show = "all", mode = "base", page = 0) {
   const pages = Math.max(1, Math.ceil(list.length / 9)); page = Math.min(Math.max(0, page), pages - 1);
   const x = setStat(sid), rate = rows.length ? have / rows.length : 0;
   const slot = (r) => r.have
-    ? `<button class="slot" data-id="${esc(r.card.id)}" data-v="${r.v}" data-own="1" aria-label="${esc(r.card.name)} ${esc(numLabel(r.card))}, possédée ×${r.have}">
+    ? `<button class="slot" data-id="${esc(r.card.id)}" data-v="${r.v}" data-own="1" aria-label="${esc(nm(r.card))} ${esc(numLabel(r.card))}, possédée ×${r.have}">
         ${cardFrame(r.card, { qty: r.have, holo: isHolo(r.v) })}
         ${mode === "base" && r.versions > 1 ? `<span class="vb" title="${r.vOwned} variante(s) possédée(s) sur ${r.versions}">◆ ${r.vOwned}/${r.versions}</span>` : ""}
         <span class="lab">${esc(numLabel(r.card))}${r.label ? ` · ${esc(r.label)}` : ""}</span></button>`
-    : `<button class="slot miss" data-id="${esc(r.card.id)}" data-v="${r.v}" aria-label="Manquante : ${esc(r.card.name)} ${esc(numLabel(r.card))}${r.label ? " " + esc(r.label) : ""}, ajouter">
-        <span class="hole">${img(r.card) ? `<img alt="" loading="lazy" src="${img(r.card)}">` : ""}<b>#${esc(r.card.l)}</b><span>${esc(r.card.name)}${r.label ? ` · ${esc(r.label)}` : ""}</span><i>+</i><small>${money(r.price)}</small></span>
+    : `<button class="slot miss" data-id="${esc(r.card.id)}" data-v="${r.v}" aria-label="Manquante : ${esc(nm(r.card))} ${esc(numLabel(r.card))}${r.label ? " " + esc(r.label) : ""}, ajouter">
+        <span class="hole">${img(r.card) ? `<img alt="" loading="lazy" src="${img(r.card)}">` : ""}<b>#${esc(r.card.l)}</b><span>${esc(nm(r.card))}${r.label ? ` · ${esc(r.label)}` : ""}</span><i>+</i><small>${money(r.price)}</small></span>
         <span class="lab">${esc(numLabel(r.card))}</span></button>`;
   const dots = pages <= 12 ? Array.from({ length: pages }, (_, i) => `<button data-page="${i}" class="${i === page ? "on" : ""}" aria-label="Page ${i + 1}"></button>`).join("")
     : `<button data-page="${page - 1}" aria-label="Page précédente" ${page ? "" : "disabled"}></button><button class="on" aria-label="Page ${page + 1}"></button><button data-page="${page + 1}" aria-label="Page suivante" ${page < pages - 1 ? "" : "disabled"}></button>`;
   $("#sheet-body").innerHTML = `
     <header class="hdr m-hdr ${setCls(sid)}" style="--hc:var(--tc)"><div class="hdr-in">
       <div class="hdr-top"><button class="round" data-close aria-label="Retour">${svg(ICONS.back)}</button>
-        <span class="chipdark">SET ${esc(s.code || s.id.toUpperCase())} · ${mode === "master" ? inf.mTotal : inf.total} cartes</span>
+        <span class="chipdark">SET ${esc(s.code || s.raw || s.id)}${s.lang !== "fr" ? ` · ${LANG_LABEL[s.lang]}` : ""} · ${mode === "master" ? inf.mTotal : inf.total} cartes</span>
         <button class="round" id="mode-btn" aria-label="Basculer en ${mode === "master" ? "une par numéro" : "master set"}">${svg(ICONS.filter)}</button></div>
       <h1>${esc(s.name)}</h1>
       <div class="sub">${esc(s.serie)}${s.date ? ` · sortie le ${fmtDate(s.date)}` : ""}</div>
@@ -647,7 +670,7 @@ async function openSheet({ id, v, uid: u }) {
   const existing = u ? store.items.find((i) => i.uid === u) : null;
   const lastSrc = purchase(store.settings.lastSrc) ? store.settings.lastSrc : "";
   const c0 = byId.get(existing?.id ?? id);
-  const it = existing ?? { id, v: v && c0?.v.includes(v) ? v : defVariant(c0), qty: 1, cond: "Near Mint", lang: "FR", buy: "", buyDate: today(), manual: "", note: "", src: lastSrc };
+  const it = existing ?? { id, v: v && c0?.v.includes(v) ? v : defVariant(c0), qty: 1, cond: "Near Mint", lang: LANG_LABEL[langOf(c0)] || "FR", buy: "", buyDate: today(), manual: "", note: "", src: lastSrc };
   const c = byId.get(it.id), s = sets.get(c?.s);
   const own = it.photo ? await photoUrl(it.uid) : null;
   const vlist = (c?.v || "n").split("");
@@ -663,7 +686,7 @@ async function openSheet({ id, v, uid: u }) {
     <div class="wrap">
       <div class="bigcard-wrap" id="bigcard">${cardFrame(c, { src: own ?? undefined, big: true, holo: isHolo(it.v), cls: "bigcard" })}</div>
       ${own ? `<div class="pills" style="justify-content:center;margin-top:18px"><button class="pill sm" data-img="off">Illustration officielle</button><button class="pill sm on" data-img="own">Ma photo</button></div>` : ""}
-      <div class="c-title"><h2>${esc(c?.name ?? "Carte")}</h2>${c?.r ? `<span class="rbadge">${esc(rsym(c))} ${esc(c.r)}</span>` : ""}</div>
+      <div class="c-title"><h2>${esc(nm(c) || "Carte")}</h2>${c?.r ? `<span class="rbadge">${esc(rsym(c))} ${esc(c.r)}</span>` : ""}</div>
       <div class="tiles2">
         <div class="stk"><div class="tl" id="cote-l">Cote moyenne</div><div class="tv" id="cote">—</div><div class="th" id="cote-h"></div></div>
         <div class="stk"><div class="tl">Langue</div><div class="seg" id="langs" role="group" aria-label="Langue">${FLANGS.map((l) => `<button type="button" data-l="${l}" class="${l === st.lang ? "on" : ""}" aria-pressed="${l === st.lang}">${l}</button>`).join("")}</div></div>
@@ -694,7 +717,7 @@ async function openSheet({ id, v, uid: u }) {
       </form>
       <div class="actions">
         ${existing ? `<button class="btn danger" id="del">Supprimer</button>` : ""}
-        <a class="btn" href="https://www.cardmarket.com/fr/Pokemon/Products/Search?searchString=${encodeURIComponent(c?.name ?? "")}&mode=gallery" target="_blank" rel="noopener">Cardmarket ${svg(ICONS.link)}</a>
+        <a class="btn" href="https://www.cardmarket.com/fr/Pokemon/Products/Search?searchString=${encodeURIComponent((langOf(c) === "ja" ? c?.a : c?.name) || c?.name || "")}&mode=gallery" target="_blank" rel="noopener">Cardmarket ${svg(ICONS.link)}</a>
         <button class="btn primary" id="save">${existing ? "Enregistrer" : "Ajouter au classeur"}</button>
       </div>
     </div>`;
@@ -816,15 +839,15 @@ function prepCanvas(bmp, [fx, fy, fw, fh], width = 1800) {
 // Confusions OCR fréquentes : O/0, I/1, S/5, B/8 (+ Z/2, G/6)
 const DIG = (s) => s.replace(/[OQD]/g, "0").replace(/[IL|!]/g, "1").replace(/S/g, "5").replace(/B/g, "8").replace(/Z/g, "2").replace(/G/g, "6");
 const LET = (s) => s.replace(/0/g, "O").replace(/1/g, "I").replace(/5/g, "S").replace(/8/g, "B").replace(/2/g, "Z").replace(/6/g, "G");
-const CODES = () => new Set([...sets.values()].map((s) => s.code.toUpperCase()).filter(Boolean));
+const CODES = () => new Set([...sets.values()].map((s) => (s.code || "").toUpperCase()).filter(Boolean));
 function candidates(text) {
   const t = text.toUpperCase().replace(/[\\|]/g, "/"), codes = CODES(), out = new Map();
   const add = (label, list) => { for (const c of list) if (!out.has(c.id)) out.set(c.id, { c, label }); };
   // "MEW FR 025/165", "025/165", "TG05/TG30"
-  for (const m of t.matchAll(/(?:([A-Z0-9]{2,4})\s+)?(?:(?:FR|EN|F|R)\s+)?([A-Z]{0,2}[0-9OQDILSBZG]{1,3})\s*\/\s*([A-Z]{0,2}[0-9OQDILSBZG]{2,3})/g)) {
+  for (const m of t.matchAll(/(?:([A-Z0-9]{2,4})\s+)?(?:(FR|EN|F|R)\s+)?([A-Z]{0,2}[0-9OQDILSBZG]{1,3})\s*\/\s*([A-Z]{0,2}[0-9OQDILSBZG]{2,3})/g)) {
     const fix = (x) => { const p = x.match(/^([A-Z]{0,2}?)([0-9OQDILSBZG]+)$/); return p ? (p[1] && /^(TG|GG|SV|RC|H)$/.test(p[1]) ? p[1] : "") + DIG(p[2]) : DIG(x); };
-    const num = fix(m[2]), tot = fix(m[3]), code = m[1] ? LET(m[1]) : "";
-    if (code && codes.has(code)) { const r = search(`${code} ${num}/${tot}`); if (r.list.length) { add(`${code} ${num}/${tot}`, r.list); continue; } }
+    const num = fix(m[3]), tot = fix(m[4]), code = m[1] ? LET(m[1]) : "", lg = m[2] === "EN" ? " EN" : m[2] === "FR" || m[2] === "F" ? " FR" : "";
+    if (code && codes.has(code)) { const r = search(`${code}${lg} ${num}/${tot}`); if (r.list.length) { add(`${code}${lg} ${num}/${tot}`, r.list); continue; } }
     const r = search(`${num}/${tot}`); if (r.list.length) add(`${num}/${tot}`, r.list);
   }
   // Promos et cartes sans total : "SVP FR 045", "MEW 025"
@@ -935,6 +958,7 @@ $("#sort").addEventListener("input", () => { store.settings.sort = $("#sort").va
 $("#filter").addEventListener("input", renderGrid);
 $("#set-filter").addEventListener("input", renderSets);
 $("#sets-chips").onclick = (e) => { const b = e.target.closest(".pill"); if (!b) return; setsMode = b.dataset.s; renderSets(); };
+$("#sets-langs").onclick = (e) => { const b = e.target.closest(".pill"); if (!b) return; setsLang = b.dataset.l; renderSets(); };
 $("#periods").onclick = async (e) => {
   const b = e.target.closest(".pill"); if (!b) return;
   store.settings.period = +b.dataset.p; save();
@@ -949,17 +973,20 @@ $("#reset").onclick = () => { if (confirm("Effacer toute la collection de cet ap
 // ---------- Démarrage ----------
 (async () => {
   try { await loadData(); }
-  catch { toast("Données indisponibles — vérifie ta connexion."); }
+  catch (e) { console.error("loadData", e); toast("Données indisponibles — vérifie ta connexion."); }
   $("#updated").textContent = prices.updated ? `Cotes Cardmarket du ${fmtDate(prices.updated)}` : "";
-  $("#data-info").textContent = `${cards.length.toLocaleString("fr-FR")} cartes · ${sets.size} extensions · prix Cardmarket du ${fmtDate(prices.updated)}`;
+  const per = (l) => [...sets.values()].filter((s) => s.lang === l);
+  $("#data-info").textContent = `${cards.length.toLocaleString("fr-FR")} cartes · ${sets.size} extensions (${["fr", "en", "ja"].map((l) => `${per(l).length} ${LANG_LABEL[l]}`).join(", ")}) · prix Cardmarket du ${fmtDate(prices.updated)}`;
   refreshViews();
   await loadServerHist(fromDate()); refreshViews();
   document.documentElement.dataset.ready = "1";
 })();
 let swReg = null;
 // Mises à jour : vérification à chaque retour dans l'app, rechargement automatique quand une nouvelle version est prête
-const APP_VERSION = "3 (04/11/2026)";
+const APP_VERSION = "4 (04/11/2026)";
 $("#app-version").textContent = `Version de l'app : ${APP_VERSION}`;
+// Stockage persistant : évite que le navigateur vide la collection et le cache hors ligne
+navigator.storage?.persist?.().catch(() => {});
 if ("serviceWorker" in navigator) {
   const hadController = !!navigator.serviceWorker.controller;
   let reloading = false;
