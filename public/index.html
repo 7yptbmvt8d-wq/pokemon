@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mon classeur</title>
+  <meta name="description" content="Collection de cartes Pokémon françaises : ajout par numéro ou scan, cote Cardmarket, complétion des extensions.">
+  <meta name="theme-color" content="#2F7BF0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mon classeur">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@500;700;800&display=swap">
+  <link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+  <!-- MON CLASSEUR -->
+  <section id="view-home" class="view active">
+    <header class="hdr" style="--hc:var(--blue)"><div class="hdr-in">
+      <div class="hdr-top"><h1>Mon classeur</h1>
+        <button class="round" id="go-search" aria-label="Rechercher dans ma collection"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button></div>
+      <div class="ring-row">
+        <div class="ring" id="ring" role="img" aria-label="Complétion globale"><div class="ring-in"><b id="ring-pct">0%</b><span>complété</span></div></div>
+        <div class="ring-txt"><div class="big" id="ring-count"><b>0</b> / 0 cartes</div>
+          <div class="badges"><button class="badge y" id="b-doubles">0 doubles</button><button class="badge" id="b-wish" data-goto="wish">0 recherchées</button></div>
+          <div class="sub" id="updated"></div></div>
+      </div>
+    </div></header>
+
+    <div class="wrap">
+      <div class="stk" id="value-block">
+        <div class="value-lbl">Valeur de la collection</div>
+        <div class="value" id="total">—</div>
+        <div class="value-delta" id="delta"></div>
+        <div class="chart" id="chart-total"></div>
+        <div class="chart-axis" id="axis-total"></div>
+        <p class="empty-chart" id="chart-empty" hidden>La courbe se construit au fil des mises à jour des prix (instantané chaque semaine).</p>
+        <div class="pills" id="periods" role="group" aria-label="Période">
+          <button class="pill sm" data-p="30">1M</button><button class="pill sm" data-p="90">3M</button><button class="pill sm" data-p="180">6M</button><button class="pill sm" data-p="365">1A</button><button class="pill sm" data-p="0">Tout</button>
+        </div>
+      </div>
+      <div class="stats3" id="stats"></div>
+      <div class="movers" id="movers"></div>
+
+      <div class="sec"><h2>Par type</h2><button class="link" id="type-clear" hidden>Tous</button></div>
+      <div class="types" id="types"></div>
+
+      <div id="completion" hidden>
+        <div class="sec"><h2>Mes sets</h2><button class="link" data-goto="sets">Tout voir</button></div>
+        <div class="set-list" id="my-sets"></div>
+      </div>
+
+      <div class="sec" id="my-cards"><h2>Mes cartes</h2><span class="muted small" id="cards-count"></span></div>
+      <div class="toolbar">
+        <div class="field-wrap">
+          <svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="filter" type="search" placeholder="Nom, extension, numéro…" autocomplete="off" aria-label="Filtrer mes cartes">
+        </div>
+        <select id="sort" aria-label="Trier">
+          <option value="number">Extension</option>
+          <option value="value">Valeur</option>
+          <option value="added">Ajout</option>
+          <option value="change">Variation</option>
+          <option value="pl">Plus-value</option>
+        </select>
+      </div>
+      <div id="grid" class="grid"></div>
+      <div id="empty" class="empty" hidden>
+        <div class="ic"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg></div>
+        <p>Ton classeur est vide.<br>Ajoute ta première carte avec le scanner.</p>
+        <button class="btn red" data-goto="scan">Ajouter une carte</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETS -->
+  <section id="view-sets" class="view">
+    <header class="hdr" style="--hc:var(--green)"><div class="hdr-in"><div class="hdr-top"><h1>Sets</h1></div>
+      <div class="sub" id="sets-sub"></div></div></header>
+    <div class="wrap">
+      <div class="field-wrap"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="set-filter" type="search" placeholder="Nom ou code (MEW, 151…)" autocomplete="off" aria-label="Filtrer les extensions"></div>
+      <div class="pills" id="sets-chips"><button class="pill sm on" data-s="mine">Mes sets</button><button class="pill sm" data-s="all">Toutes les extensions</button></div>
+      <div id="sets-list"></div>
+    </div>
+  </section>
+
+  <!-- SCANNER / AJOUT -->
+  <section id="view-scan" class="view">
+    <header class="hdr" style="--hc:var(--red)"><div class="hdr-in"><div class="hdr-top"><h1>Scanner</h1></div>
+      <div class="sub">Code d'extension + numéro, ou photo de la carte</div></div></header>
+    <div class="wrap">
+      <form id="search-form" class="search">
+        <div class="field-wrap">
+          <svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="q" type="search" autocapitalize="off" autocomplete="off" enterkeyhint="search" placeholder="MEW 025, 025/165, 151 25 ou nom" aria-label="Code d'extension et numéro, ou nom">
+        </div>
+        <button class="btn red" type="submit">Chercher</button>
+      </form>
+      <label class="stk scan-btn">
+        <span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg></span>
+        <span><b>Photographier une carte</b><span class="muted">Le code et le numéro en bas de la carte sont lus automatiquement</span></span>
+        <input id="scan-input" type="file" accept="image/*" capture="environment" hidden>
+      </label>
+      <div id="scan-status"></div>
+      <div id="scan-preview"></div>
+      <div id="results" class="results"></div>
+    </div>
+  </section>
+
+  <!-- RECHERCHÉES -->
+  <section id="view-wish" class="view">
+    <header class="hdr" style="--hc:#F5B800"><div class="hdr-in"><div class="hdr-top"><h1 style="color:var(--ink)">Recherchées</h1></div>
+      <div class="sub" style="color:var(--ink)" id="wish-sub"></div></div></header>
+    <div class="wrap"><div id="wish-list" class="results"></div></div>
+  </section>
+
+  <!-- PROFIL -->
+  <section id="view-profile" class="view">
+    <header class="hdr" style="--hc:#B05CE8"><div class="hdr-in"><div class="hdr-top"><h1>Profil</h1></div>
+      <div class="sub">Statistiques, sauvegarde et réglages</div></div></header>
+    <div class="wrap">
+      <div class="stats3" id="p-stats" style="margin-top:0"></div>
+      <div class="stats3" id="p-stats2"></div>
+      <div class="sec"><h2>Réglages</h2></div>
+      <div class="stk"><label class="field">Devise d'affichage
+        <select id="currency"><option value="EUR">Euro (€)</option><option value="USD">Dollar US ($)</option><option value="GBP">Livre sterling (£)</option><option value="CHF">Franc suisse (CHF)</option></select></label>
+        <p class="muted small" style="margin:8px 0 0">Les prix Cardmarket sont en euros ; conversion au taux BCE du jour.</p></div>
+      <div class="sec"><h2>Sauvegarde</h2></div>
+      <div class="stk">
+        <p class="muted small" style="margin:0 0 12px">La collection est stockée uniquement sur cet appareil. Exporte-la régulièrement.</p>
+        <div class="row">
+          <button class="btn" id="export">Exporter (JSON)</button>
+          <label class="btn">Importer (JSON)<input type="file" id="import" accept="application/json,.json" hidden></label>
+          <button class="btn" id="export-csv">Exporter pour Excel (CSV)</button>
+        </div>
+      </div>
+      <div class="sec"><h2>Données</h2></div>
+      <div class="stk">
+        <p class="muted small" id="data-info" style="margin:0"></p>
+        <p class="muted small" id="app-version"></p>
+        <p class="muted small">Cartes, illustrations et prix : API TCGdex (cartes françaises), prix Cardmarket « tendance » en €, mis à jour chaque jour. Reverse : prix Cardmarket reverse. Un prix manuel saisi sur la fiche est prioritaire.</p>
+        <button class="btn danger" id="reset">Effacer la collection</button>
+      </div>
+    </div>
+  </section>
+
+  <nav class="nav" aria-label="Navigation">
+    <button class="on" data-goto="home" aria-label="Mon classeur"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg></button>
+    <button data-goto="sets" aria-label="Sets"><svg class="i" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg></button>
+    <button class="fab" data-goto="scan" aria-label="Scanner une carte"><svg class="i" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><rect x="9" y="8" width="6" height="8" rx="1"/></svg></button>
+    <button data-goto="wish" aria-label="Recherchées"><svg class="i" viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></button>
+    <button data-goto="profile" aria-label="Profil"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></button>
+  </nav>
+
+  <dialog id="sheet" class="sheet" aria-label="Détail"><div id="sheet-body"></div></dialog>
+  <div id="ptr" class="ptr" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></div>
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script type="module" src="app.js?v=1"></script>
+</body>
+</html>

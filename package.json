@@ -1,0 +1,13 @@
+{
+  "name": "pokemon-collection",
+  "private": true,
+  "description": "Collection de cartes Pokémon françaises (PWA, sans build)",
+  "type": "module",
+  "scripts": {
+    "data": "node scripts/build-data.mjs",
+    "start": "npm run data && python3 -m http.server 8080 --directory public",
+    "serve": "python3 -m http.server 8080 --directory public",
+    "icons": "node scripts/icons.mjs",
+    "test": "node tests/e2e.mjs"
+  }
+}
