@@ -116,10 +116,22 @@ function money(eur, dec = 2) {
 const pct = (x) => (x == null || !isFinite(x) ? "" : (x >= 0 ? "+" : "") + (x * 100).toFixed(1).replace(".", ",") + " %");
 const fromDate = () => (store.settings.period ? daysAgo(store.settings.period) : "0000");
 
-function cardPoints(id, v, from = fromDate()) {
+// Amorce de l'historique : moyennes Cardmarket sur 30 jours, 7 jours et la veille, placées au milieu de leur période.
+// Utilisées seulement avant le premier point réellement relevé : elles s'effacent à mesure que l'historique se construit.
+const shiftDate = (d, n) => new Date(Date.parse(d) - n * 864e5).toISOString().slice(0, 10);
+function seedPoints(id, v) {
+  const p = prices.p[id], d = prices.updated; if (!p || !d) return [];
+  const [a30, a7, a1] = v === "r" ? [p[5], p[8], p[9]] : [p[2], p[6], p[7]];
+  return [[shiftDate(d, 15), a30], [shiftDate(d, 4), a7], [shiftDate(d, 1), a1]].filter((x) => x[1] != null);
+}
+function cardPoints(id, v, from = fromDate(), info) {
   const m = new Map(), i = v === "r" ? 1 : 0;
   for (const [d, s] of hist.snaps) { const x = s?.p[id]?.[i]; if (d >= from && x != null) m.set(d, x); }
   for (const [d, e] of store.hist[hk(id, v)] || []) if (d >= from) m.set(d, e);
+  const first = [...m.keys()].sort()[0] ?? "9999";
+  let seeded = 0;
+  for (const [d, x] of seedPoints(id, v)) if (d >= from && d < first && !m.has(d)) { m.set(d, x); seeded++; }
+  if (info) info.seeded = seeded;
   return [...m].sort((a, b) => a[0].localeCompare(b[0]));
 }
 function change(it) {
@@ -709,6 +721,7 @@ async function openSheet({ id, v, uid: u }) {
         <div class="chart" id="chart-card"></div>
         <div class="chart-axis" id="axis-card"></div>
         <p class="empty-chart" id="card-chart-empty" hidden>Historique en cours de constitution (un point par semaine et à chaque mise à jour des prix).</p>
+        <p class="empty-chart" id="card-chart-seed" hidden>Début de courbe : moyennes Cardmarket (30 jours, 7 jours, veille), en attendant l'historique relevé chaque semaine.</p>
         <div id="card-stats"></div>
       </div>
       <form class="stk form" id="item-form" style="margin-top:16px">
@@ -777,8 +790,9 @@ async function openSheet({ id, v, uid: u }) {
     ${plv != null ? `<div class="pl-line"><span class="muted">Plus-value</span><b class="${plv >= 0 ? "gain" : "loss"}">${plv >= 0 ? "+" : "−"}${money(Math.abs(plv))} ${trend(cur.buy ? plv / (cur.buy * cur.qty) : null)}</b></div>` : ""}`;
     await loadServerHist(fromDate());
     if (!$("#sheet").open || !$("#chart-card")) return;
-    const ok = priceChart("card", $("#chart-card"), cardPoints(cur.id, cur.v), { grid: true, ref: bought ? +cur.buy : null, axis: $("#axis-card"), readout: $("#card-readout") });
-    $("#card-chart-empty").hidden = ok;
+    const seedInfo = {};
+    const ok = priceChart("card", $("#chart-card"), cardPoints(cur.id, cur.v, fromDate(), seedInfo), { grid: true, ref: bought ? +cur.buy : null, axis: $("#axis-card"), readout: $("#card-readout") });
+    $("#card-chart-empty").hidden = ok; $("#card-chart-seed").hidden = !ok || !seedInfo.seeded;
   }
   f.elements.manual.onchange = refresh; f.elements.buy.onchange = refresh;
   $("#save").onclick = () => saveItem(existing, it, st);
@@ -989,7 +1003,7 @@ $("#reset").onclick = () => { if (confirm("Effacer toute la collection de cet ap
 })();
 let swReg = null;
 // Mises à jour : vérification à chaque retour dans l'app, rechargement automatique quand une nouvelle version est prête
-const APP_VERSION = "6 (04/11/2026)";
+const APP_VERSION = "7 (05/11/2026)";
 $("#app-version").textContent = `Version de l'app : ${APP_VERSION}`;
 // Stockage persistant : évite que le navigateur vide la collection et le cache hors ligne
 navigator.storage?.persist?.().catch(() => {});

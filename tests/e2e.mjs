@@ -97,6 +97,8 @@ await page.waitForTimeout(400);
 await shot("05-accueil");
 const total = await page.textContent("#total");
 ok(/\d/.test(total), `Valeur totale affichée (${total})`);
+ok(!!(await page.$("#chart-total svg polyline")), "Courbe de la valeur affichée dès le 1er jour (moyennes Cardmarket)");
+ok(/depuis le/.test(await page.textContent("#delta")), `Variation sur la période : ${(await page.textContent("#delta")).trim()}`);
 ok(/181/.test(await page.textContent("#stats")), "Tuile Investi = scellé 180 € + unité 2 × 0,50 €");
 ok(await page.isVisible("#my-sets .set-row"), "Bloc « Mes sets » visible");
 const ringTxt = await page.textContent("#ring-count");

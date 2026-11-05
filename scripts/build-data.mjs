@@ -72,7 +72,8 @@ for (const lang of LANGS) {
     cards.push([pre(lang) + ref.id, pre(lang) + set, ref.localId, c?.name ?? ref.name, c?.rarity ?? "", vs || "n", img, t, c?.hp ?? 0, alias, c?.regulationMark ?? ""]);
     const cm = c?.pricing?.cardmarket;
     if (cm) {
-      const p = [num(cm.trend), num(cm.low), num(cm.avg30), num(cm["trend-holo"]), num(cm["low-holo"]), num(cm["avg30-holo"])];
+      // [trend, low, avg30, trend-holo, low-holo, avg30-holo, avg7, avg1, avg7-holo, avg1-holo]
+      const p = [num(cm.trend), num(cm.low), num(cm.avg30), num(cm["trend-holo"]), num(cm["low-holo"]), num(cm["avg30-holo"]), num(cm.avg7), num(cm.avg1), num(cm["avg7-holo"]), num(cm["avg1-holo"])];
       if (p.some((x) => x != null)) prices[pre(lang) + ref.id] = p;
     }
     if (++done % 5000 === 0) console.log(`${lang} ${done} / ${refs.length}`);
